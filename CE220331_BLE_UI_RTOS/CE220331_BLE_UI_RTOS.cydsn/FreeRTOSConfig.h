@@ -86,7 +86,7 @@
 
 #define configCPU_CLOCK_HZ                      cy_delayFreqHz
 #define configTICK_RATE_HZ                      1000
-#define configMAX_PRIORITIES                    7  /* Changed to suit the 
+#define configMAX_PRIORITIES                    20  /* Changed to suit the 
                                                       project*/
 #define configMINIMAL_STACK_SIZE                128
 #define configMAX_TASK_NAME_LEN                 16

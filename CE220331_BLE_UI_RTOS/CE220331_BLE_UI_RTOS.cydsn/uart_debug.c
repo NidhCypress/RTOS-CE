@@ -52,7 +52,7 @@
 #if (UART_DEBUG_ENABLE)
 
 /* Queue handle for debug message Queue */       
-QueueHandle_t xQueue_PrintData;
+QueueHandle_t debugMessageQ;
 
 /*******************************************************************************
 * Function Name: void Task_Debug(void *pvParameters)
@@ -82,24 +82,24 @@ void Task_Debug(void *pvParameters)
     for(;;)
     {
         /* Block until a message to printed has been received over 
-           xQueue_PrintData */
-        rtosApiResult = xQueueReceive(xQueue_PrintData, &dataToPrint,
+           debugMessageQ */
+        rtosApiResult = xQueueReceive(debugMessageQ, &dataToPrint,
                                       portMAX_DELAY);
         
-        /* Message has been received from xQueue_PrintData */
+        /* Message has been received from debugMessageQ */
         if(rtosApiResult == pdTRUE)
         {
             /* If the error code is not 0, print message string along with the
                error code (as 32-bit hexadecimal data) */
             if(dataToPrint.errorCode != 0u)
             {
-                UartPrintf("%s %"PRIX32" \r\n", dataToPrint.stringPointer,
+                DebugPrintf("%s %"PRIX32" \r\n", dataToPrint.stringPointer,
                             dataToPrint.errorCode);
             }
             /* Otherwise, print the message string only */
             else
             {
-                UartPrintf("%s \r\n", dataToPrint.stringPointer);
+                DebugPrintf("%s \r\n", dataToPrint.stringPointer);
             }
         }    
     }

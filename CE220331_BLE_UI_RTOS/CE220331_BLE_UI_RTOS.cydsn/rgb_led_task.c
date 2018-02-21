@@ -71,7 +71,7 @@
 #define GetIntensity(x) (uint8_t)((x >> 24u) & 0x000000FFu)
 
 /* Handle for the Queue that contains RGB LED data */   
-QueueHandle_t xQueue_RgbLedData;
+QueueHandle_t rgbLedDataQ;
 
 /*******************************************************************************
 * Function Name: void Task_RgbLed (void *pvParameters)
@@ -101,11 +101,11 @@ void Task_RgbLed (void *pvParameters)
     /* Repeatedly running part of the task */
     for(;;)
     {
-        /* Block until RGB data has been received over xQueue_RgbLedData */
-        rtosApiResult = xQueueReceive(xQueue_RgbLedData, &colorAndIntensity,
+        /* Block until RGB data has been received over rgbLedDataQ */
+        rtosApiResult = xQueueReceive(rgbLedDataQ, &colorAndIntensity,
                         portMAX_DELAY);
         
-        /* RGB data has been received from xQueue_RgbLedData */
+        /* RGB data has been received from rgbLedDataQ */
         if(rtosApiResult == pdTRUE)
         {
             /* If the Intensity value sent by the client is below the set 
@@ -160,7 +160,7 @@ void Task_RgbLed (void *pvParameters)
            portMAXDELAY ticks */
         else
         {
-            DebugPrintf("Warning! : RGB - Task Timed out ", 0u);   
+            Task_DebugPrintf("Warning! : RGB - Task Timed out ", 0u);   
         }
     }  
 }   

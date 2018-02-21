@@ -60,7 +60,7 @@
 #define STATUS_LED_IDLE_INTERVAL   (portMAX_DELAY)
 
 /* Queue handle used for commands to Task_StatusLed */
-QueueHandle_t xQueue_StatusLedData;
+QueueHandle_t statusLedDataQ;
 
 /* Timer handles used to control LED blink / toggle intervals */
 TimerHandle_t xTimer_StatusLedRed;
@@ -108,10 +108,10 @@ void Task_StatusLed(void *pvParameters)
     /* Repeatedly running part of the task */
     for(;;)
     {
-        /* Block until a command has been received over xQueue_StatusLedData */
-        rtosApiResult = xQueueReceive(xQueue_StatusLedData, &statusLedData,
+        /* Block until a command has been received over statusLedDataQ */
+        rtosApiResult = xQueueReceive(statusLedDataQ, &statusLedData,
                          portMAX_DELAY);
-        /* Command has been received from xQueue_StatusLedData */
+        /* Command has been received from statusLedDataQ */
         if(rtosApiResult == pdTRUE)
         {
             /* Take an action based on the command received for Orange LED */
@@ -148,7 +148,7 @@ void Task_StatusLed(void *pvParameters)
                     orangeLedState = LED_BLINK_ONCE;
                     break;
                 /* Refresh the LED based on the current state */     
-                case LED_REFRESH:
+                case LED_TIMER_EXPIRED:
                     if(orangeLedState == LED_TOGGLE_EN)
                     {
                         /* Toggle the LED */
@@ -166,15 +166,16 @@ void Task_StatusLed(void *pvParameters)
                     }
                     else
                     {
-                         DebugPrintf("Error!   : Status LED - refresh command"\
-                                      " for Red LED during invalid state", 0u);   
+                        Task_DebugPrintf("Error!   : Status LED - refresh "\
+                                         "command for Red LED during invalid"\
+                                         "state", 0u);   
                     }
                     break;
                 /* Invalid command received */    
                 default:
-                    DebugPrintf("Error!   : Status LED - Invalid  command for "
-                                "Red LED received. Error Code:"
-                                 , statusLedData.orangeLed);
+                    Task_DebugPrintf("Error!   : Status LED - Invalid  command"\
+                                     " for Red LED received. Error Code:",
+                                      statusLedData.orangeLed);
                     break;
             }
             
@@ -212,7 +213,7 @@ void Task_StatusLed(void *pvParameters)
                     redLedState = LED_BLINK_ONCE;
                     break;
                 /* Refresh the LED based on the current state */         
-                case LED_REFRESH:
+                case LED_TIMER_EXPIRED:
                     if(redLedState == LED_TOGGLE_EN)
                     {
                         /* Toggle the LED */
@@ -230,15 +231,16 @@ void Task_StatusLed(void *pvParameters)
                     }
                     else
                     {
-                         DebugPrintf("Error!   : Status LED - refresh command "\
-                                      "for Orange LED during invalid state",0u);   
+                         Task_DebugPrintf("Error!   : Status LED - refresh "\
+                                          "command for Orange LED during"\
+                                          "invalid state",0u);   
                     }
                     break;
                 /* Invalid command received */      
                 default:
-                    DebugPrintf("Error!   : Status LED - Invalid  command for"\
-                                "Red LED received. Error Code:",
-                                statusLedData.orangeLed);
+                    Task_DebugPrintf("Error!   : Status LED - Invalid command"
+                                     "for Red LED received. Error Code:",
+                                      statusLedData.orangeLed);
                     break;
             }            
         }
@@ -246,7 +248,7 @@ void Task_StatusLed(void *pvParameters)
            portMAXDELAY ticks */
         else
         {
-            DebugPrintf("Warning! : Status LED - Task Timed out ", 0u);   
+            Task_DebugPrintf("Warning! : Status LED - Task Timed out ", 0u);   
         }
     }
 }
@@ -276,15 +278,15 @@ void static StatusLedOrangeTimerCallback(TimerHandle_t xTimer)
     
     status_led_data_t ledRefreshData = 
     {   .redLed     = LED_NO_CHANGE,
-        .orangeLed  = LED_REFRESH 
+        .orangeLed  = LED_TIMER_EXPIRED 
     };
-    rtosApiResult = xQueueSend(xQueue_StatusLedData, &ledRefreshData,0u);
+    rtosApiResult = xQueueSend(statusLedDataQ, &ledRefreshData,0u);
     
     /* Check if the operation has been successful */
     if(rtosApiResult != pdTRUE)
     {
-        DebugPrintf("Failure! : Status LED - Sending data to Status LED queue",
-                    0u);      
+        Task_DebugPrintf("Failure! : Status LED - Sending data to Status LED "\
+                         "queue",0u);      
     }
 }
 
@@ -321,13 +323,14 @@ void static StatusLedOrangeTimerStart(void)
         /* Check if the operation has been successful */
         if(rtosApiResult  != pdPASS)
         {
-            DebugPrintf("Failure! : Status LED  - Orange LED Timer "\
-                        "initialization", 0u);    
+            Task_DebugPrintf("Failure! : Status LED  - Orange LED Timer "\
+                             "initialization", 0u);    
         }
     }
     else
     {
-        DebugPrintf("Failure! : Status LED  - Orange LED Timer creation", 0u); 
+        Task_DebugPrintf("Failure! : Status LED  - Orange LED Timer creation",
+                          0u); 
     }  
 }
 
@@ -355,7 +358,8 @@ void static StatusLedOrangeTimerUpdate(TickType_t period)
     /* Check if the operation has been successful */
     if(rtosApiResult != pdPASS)
     {
-        DebugPrintf("Failure! : Status LED - Orange LED Timer update ", 0u);   
+        Task_DebugPrintf("Failure! : Status LED - Orange LED Timer update ",
+                          0u);   
     }
 }
 
@@ -382,16 +386,16 @@ void static StatusLedRedTimerCallback(TimerHandle_t xTimer)
     
     /* Send command to refresh the LED state */
     status_led_data_t ledRefreshData = 
-    {   .redLed     = LED_REFRESH,
+    {   .redLed     = LED_TIMER_EXPIRED,
         .orangeLed  = LED_NO_CHANGE 
     };
-    rtosApiResult = xQueueSend(xQueue_StatusLedData, &ledRefreshData,0u);
+    rtosApiResult = xQueueSend(statusLedDataQ, &ledRefreshData,0u);
     
     /* Check if the operation has been successful */
     if(rtosApiResult != pdTRUE)
     {
-        DebugPrintf("Failure! : Status LED - Sending data to Status LED queue",
-                    0u);    
+        Task_DebugPrintf("Failure! : Status LED - Sending data to Status LED "\
+                         "queue",0u);    
     }
 }
 
@@ -427,13 +431,13 @@ void static StatusLedRedTimerStart(void)
         /* Check if the operation has been successful */
         if(rtosApiResult != pdPASS)
         {
-            DebugPrintf("Failure! : Status LED  - Red LED Timer initialization"
-                        , 0u);    
+            Task_DebugPrintf("Failure! : Status LED  - Red LED Timer "\
+                             "initialization", 0u);    
         }
     }
     else
     {
-        DebugPrintf("Failure! : Status LED  - Red LED Timer creation", 0u); 
+        Task_DebugPrintf("Failure! : Status LED  - Red LED Timer creation", 0u); 
     }
 }
 
@@ -461,7 +465,7 @@ void static StatusLedRedTimerUpdate(TickType_t period)
     /* Check if the operation has been successful */
     if(rtosApiResult != pdPASS)
     {
-        DebugPrintf("Failure! : Status LED - Red LED Timer update ", 0u);   
+        Task_DebugPrintf("Failure! : Status LED - Red LED Timer update ", 0u);   
     }
 }
 

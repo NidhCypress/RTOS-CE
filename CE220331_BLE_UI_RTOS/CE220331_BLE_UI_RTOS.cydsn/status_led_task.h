@@ -62,7 +62,7 @@ typedef enum
     LED_TURN_OFF,
     LED_TOGGLE_EN,
     LED_BLINK_ONCE,
-    LED_REFRESH
+    LED_TIMER_EXPIRED
 }   status_led_command_t;
 
 /* Data-type used for the control of Red and Orange status LEDs  */
@@ -73,7 +73,7 @@ typedef struct
 }   status_led_data_t;    
 
 /* Handle for the Queue that contains Status LED data */
-extern QueueHandle_t xQueue_StatusLedData;
+extern QueueHandle_t statusLedDataQ;
 
 /* Task_StatusLed updates status LED indications */
 void Task_StatusLed(void *pvParameters);

@@ -57,10 +57,10 @@
 /* Lis if BLE commands */
 typedef enum
 {
-    BLE_QUEUE_PROCESS_EVENTS,
-    BLE_QUEUE_GPIO_INTERRUPT,
-    BLE_QUEUE_SEND_SLIDER_NOTIFICATION,
-    BLE_QUEUE_SEND_BUTTON_NOTIFICATION,
+    PROCESS_BLE_EVENTS,
+    HANDLE_GPIO_INTERRUPT,
+    SEND_SLIDER_NOTIFICATION,
+    SEND_BUTTON_NOTIFICATION,
 }   ble_commands_list_t;
 
 /* Data-type of touch data */
@@ -79,7 +79,7 @@ typedef struct
 }   ble_command_t;
 
 /* Handle for the Queue that contains BLE commands */
-extern QueueHandle_t xQueue_BleCommand;
+extern QueueHandle_t bleCommandQ;
 
 /* Task_Ble takes care of the BLE module in this code example */    
 void Task_Ble(void *pvParameters);

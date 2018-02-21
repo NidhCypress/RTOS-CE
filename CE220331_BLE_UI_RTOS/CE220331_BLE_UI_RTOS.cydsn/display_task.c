@@ -102,14 +102,14 @@ void Task_Display (void *pvParameters)
        value and the delay function pointer */
     if(Cy_EINK_Start(ambientTemperature,DelayMs) == CY_EINK_SUCCESS)
     {
-        DebugPrintf("Success  : Display - Cy_EINK_Start API", 0u);
+        Task_DebugPrintf("Success  : Display - Cy_EINK_Start API", 0u);
 
         /* Power on the display and check if the operation was successful */
         displayDetected = Cy_EINK_Power(CY_EINK_ON);
     }
     else
     {
-        DebugPrintf("Failure! : Display - Cy_EINK_Start API", 0u);
+        Task_DebugPrintf("Failure! : Display - Cy_EINK_Start API", 0u);
     }
 
     for(;;)
@@ -121,7 +121,8 @@ void Task_Display (void *pvParameters)
             uint8_t   imageCoordinates[]  = CY_EINK_COMPLETE_IMAGE;
             uint8_t   textOrigin[]        = INSTRUCTION_TEXT_ORIGIN;
             
-            DebugPrintf("Success  : Display - E-INK display power on", 0u); 
+            Task_DebugPrintf("Success  : Display - E-INK display power on",
+                             0u); 
         
             /* Clear the display to white background */
             Cy_EINK_Clear(CY_EINK_WHITE_BACKGROUND, CY_EINK_POWER_MANUAL);
@@ -141,13 +142,15 @@ void Task_Display (void *pvParameters)
         }
         else
         {   
-            DebugPrintf("Failure! : Display - E-INK display power on ", 0u); 
+            Task_DebugPrintf("Failure! : Display - E-INK display power on ",
+                              0u); 
         }
         
         /* Turn off the E-INK power */
         Cy_EINK_Power(CY_EINK_OFF);
         
-        DebugPrintf("Info     : Display - Task completed and suspended", 0u);
+        Task_DebugPrintf("Info     : Display - Task completed and suspended",
+                          0u);
 
         /* Suspend the task */
         vTaskSuspend(NULL);

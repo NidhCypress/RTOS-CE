@@ -58,7 +58,7 @@
 #define TOUCH_IDLE_INTERVAL  (portMAX_DELAY)
 
 /* Queue handles used for touch commands and data */
-QueueHandle_t xQueue_TouchCommand;
+QueueHandle_t touchCommandQ;
 
 /* Timer handles used to control touch scanning interval */
 TimerHandle_t xTimer_Touch;
@@ -118,21 +118,21 @@ void Task_Touch(void *pvParameters)
     /* Check if the operation has been successful */
     if (capSenseApiResult== CY_RET_SUCCESS)
     {
-        DebugPrintf("Success  : Touch - CapSense initialization", 0u);
+        Task_DebugPrintf("Success  : Touch - CapSense initialization", 0u);
     }
     else
     {
-        DebugPrintf("Failure! : Touch - CapSense initialization, Error Code:"
+        Task_DebugPrintf("Failure! : Touch - CapSense initialization, Error Code:"
                     , capSenseApiResult);
     }
     
     /* Repeatedly running part of the task */
     for(;;)
     {
-        /* Block until a command has been received over xQueue_TouchCommand */
-        rtosApiResult = xQueueReceive(xQueue_TouchCommand, &touchCommand,
+        /* Block until a command has been received over touchCommandQ */
+        rtosApiResult = xQueueReceive(touchCommandQ, &touchCommand,
                         portMAX_DELAY);
-         /* Command has been received from xQueue_TouchCommand */ 
+         /* Command has been received from touchCommandQ */ 
         if(rtosApiResult == pdTRUE)
         {   
             /* Take an action based on the command received */
@@ -170,7 +170,7 @@ void Task_Touch(void *pvParameters)
                     TouchTimerUpdate(TOUCH_IDLE_INTERVAL);
                     break;
                 /* Process touch data from CapSense widgets */
-                case PROCESS_TOUCH:
+                case TOUCH_TIMER_EXPIRED:
 
                     /* Do this only when CapSense isn't busy with an 
                        ongoing scan */
@@ -206,11 +206,9 @@ void Task_Touch(void *pvParameters)
                            to the queue */
                         button0Data = bleCommandTouch.touchData.dataButton0;
                         button1Data = bleCommandTouch.touchData.dataButton1;
-                            
-                        bleCommandTouch.command = 
-                                            BLE_QUEUE_SEND_BUTTON_NOTIFICATION;
+                        bleCommandTouch.command = SEND_BUTTON_NOTIFICATION;
                         
-                        xQueueSend(xQueue_BleCommand, &bleCommandTouch,0u);   
+                        xQueueSend(bleCommandQ, &bleCommandTouch,0u);   
                     }
                     
                     /* Check if slider data needs to be sent and the touch  
@@ -221,26 +219,24 @@ void Task_Touch(void *pvParameters)
                         /* Pack the slider data, respective command and send 
                            to the queue */
                         sliderData = bleCommandTouch.touchData.dataSlider;
+                        bleCommandTouch.command = SEND_SLIDER_NOTIFICATION;
                         
-                        bleCommandTouch.command = 
-                                            BLE_QUEUE_SEND_SLIDER_NOTIFICATION;
-                        
-                        xQueueSend(xQueue_BleCommand, &bleCommandTouch,0u);
+                        xQueueSend(bleCommandQ, &bleCommandTouch,0u);
                     }
 
                     /* Periodic processing request received when no touch data 
                        needs to be sent */
                     if(!(sendSliderData || sendButtonData))
                     {
-                        DebugPrintf("Error!   : Touch - periodic process "\
+                        Task_DebugPrintf("Error!   : Touch - periodic process "\
                                     " request during invalid state" , 0u);  
                     }
                     break;
                         
                 /* Invalid command received */    
                 default:
-                    DebugPrintf("Error!   : Touch - Invalid command received ."\
-                                "Error Code:", touchCommand);
+                    Task_DebugPrintf("Error!   : Touch - Invalid command "\
+                                     "received .Error Code:", touchCommand);
                     break;
             }
         }            
@@ -248,7 +244,7 @@ void Task_Touch(void *pvParameters)
         portMAXDELAY ticks */
         else
         {
-            DebugPrintf("Warning! : Touch - Task Timed out ", 0u);   
+            Task_DebugPrintf("Warning! : Touch - Task Timed out ", 0u);   
         }
     }
 }
@@ -275,13 +271,13 @@ void static TouchTimerCallback(TimerHandle_t xTimer)
     (void)xTimer;
     
     /* Send command to process touch */
-    touch_command_t touchCommand = PROCESS_TOUCH;
-    rtosApiResult = xQueueSend(xQueue_TouchCommand, &touchCommand,0u);
+    touch_command_t touchCommand = TOUCH_TIMER_EXPIRED;
+    rtosApiResult = xQueueSend(touchCommandQ, &touchCommand,0u);
     
     /* Check if the operation has been successful */
     if(rtosApiResult != pdTRUE)
     {
-        DebugPrintf("Failure! : Touch  - Sending data to touch queue", 0u);    
+        Task_DebugPrintf("Failure! : Touch  - Sending data to touch queue", 0u);    
     }
 }
 
@@ -317,12 +313,12 @@ void static TouchTimerStart(void)
         /* Check if the operation has been successful */
         if(rtosApiResult != pdPASS)
         {
-            DebugPrintf("Failure! : Touch  - Timer initialization", 0u);    
+            Task_DebugPrintf("Failure! : Touch  - Timer initialization", 0u);    
         }
     }
     else
     {
-        DebugPrintf("Failure! : Touch  - Timer creation", 0u); 
+        Task_DebugPrintf("Failure! : Touch  - Timer creation", 0u); 
     }
 }
 
@@ -350,7 +346,7 @@ void static TouchTimerUpdate(TickType_t period)
     /* Check if the operation has been successful */
     if(rtosApiResult != pdPASS)
     {
-        DebugPrintf("Failure! : Touch - Timer update ", 0u);   
+        Task_DebugPrintf("Failure! : Touch - Timer update ", 0u);   
     }
 }
 

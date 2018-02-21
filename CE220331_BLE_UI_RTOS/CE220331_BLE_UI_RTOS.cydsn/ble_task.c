@@ -71,7 +71,7 @@ void static SendBleNotification
 cy_stc_ble_conn_handle_t static connectionHandle;                
 
 /* Queue handle used for commands to BLE Task */
-QueueHandle_t xQueue_BleCommand; 
+QueueHandle_t bleCommandQ; 
 
 /* Variables used to store the previous touch command */
 touch_command_t static prevTouchCommand = SEND_NONE;
@@ -117,7 +117,7 @@ void Task_Ble(void *pvParameters)
     /* Check if the operation was successful */
     if(bleApiResult == CY_BLE_SUCCESS)
     {
-        DebugPrintf("Success  : BLE - Stack initialization", 0u);
+        Task_DebugPrintf("Success  : BLE - Stack initialization", 0u);
     
         /* Register the BLE controller (Cortex-M0+) interrupt event handler  */
         Cy_BLE_RegisterAppHostCallback(BleControllerInterruptEventHandler);
@@ -129,24 +129,24 @@ void Task_Ble(void *pvParameters)
     }
     else
     {
-        DebugPrintf("Failure! : BLE  - Stack initialization. Error Code:",
-                    bleApiResult);
+        Task_DebugPrintf("Failure! : BLE  - Stack initialization. Error Code:",
+                         bleApiResult);
     }
 
     /* Repeatedly running part of the task */
     for(;;)
     {       
-        /* Block until a BLE command has been received over xQueue_BleCommand */
-        rtosApiResult = xQueueReceive(xQueue_BleCommand, &bleCommand,
+        /* Block until a BLE command has been received over bleCommandQ */
+        rtosApiResult = xQueueReceive(bleCommandQ, &bleCommand,
                                       portMAX_DELAY);
-        /* Command has been received from xQueue_BleCommand */
+        /* Command has been received from bleCommandQ */
         if(rtosApiResult == pdTRUE)
         {
             /* Take an action based on the command received */
             switch (bleCommand.command)
             {         
             /*~~~~~~~~~~~~~~ Command to process BLE events ~~~~~~~~~~~~~~~~~~~*/
-                case BLE_QUEUE_PROCESS_EVENTS:
+                case PROCESS_BLE_EVENTS:
                     /* Process event callback to handle BLE events. The events 
                     and associated actions taken by this application are inside 
                     the 'StackEventHandler' routine. Note that Cortex M4 only 
@@ -156,14 +156,14 @@ void Task_Ble(void *pvParameters)
                     break;
                     
             /*~~~~~~~~~~~~~~ Command to send Slider Notification ~~~~~~~~~~~~~*/            
-                case BLE_QUEUE_SEND_SLIDER_NOTIFICATION:
+                case SEND_SLIDER_NOTIFICATION:
                     /* Send data over BLE slider notification */
                     SendBleNotification(SLIDER_CHAR_HANDLE, 
                                         &bleCommand.touchData.dataSlider);
                     break;    
             
             /*~~~~~~~~~~~~~~ Command to send Button Notification ~~~~~~~~~~~~~*/                     
-                case BLE_QUEUE_SEND_BUTTON_NOTIFICATION:
+                case SEND_BUTTON_NOTIFICATION:
                     
                     /* Extract the button information from the touch data */
                      buttonData[BUTTON_MASK_POS0] = BUTTON_MASK_CLEAR;
@@ -180,7 +180,7 @@ void Task_Ble(void *pvParameters)
                     break;
                     
             /*~~~~~~~~~~~~~~ Command to process GPIO interrupt ~~~~~~~~~~~~~~~*/               
-                case BLE_QUEUE_GPIO_INTERRUPT:
+                case HANDLE_GPIO_INTERRUPT:
                     /* Make sure that BLE is neither connected nor advertising
                        already */
                     if((Cy_BLE_GetConnectionState(connectionHandle) 
@@ -197,21 +197,22 @@ void Task_Ble(void *pvParameters)
                         if(bleApiResult == CY_BLE_SUCCESS )
                         {
                             Cy_BLE_ProcessEvents();
-                            DebugPrintf("Success  : BLE - Advertisement API"
-                                        , 0u);
+                            Task_DebugPrintf("Success  : BLE - Advertisement"\
+                                             "API", 0u);
                         }
                         else
                         {
-                            DebugPrintf("Failure! : BLE - Advertisement API. "\
-                                        "Error Code:" , bleApiResult);
+                            Task_DebugPrintf("Failure! : BLE - Advertisement"\
+                                             "API. Error Code:" , bleApiResult);
                         }
                     }
                     break;    
                         
                 /*~~~~~~~~~~~~~~ Invalid Command Recieved ~~~~~~~~~~~~~~~~~~~~*/ 
                 default:
-                    DebugPrintf("Error!   : BLE - Invalid Task command "\
-                                "received. Error Code:", bleCommand.command);
+                    Task_DebugPrintf("Error!   : BLE - Invalid Task command "\
+                                     "received. Error Code:", 
+                                      bleCommand.command);
                     break;
             }          
         }
@@ -219,7 +220,7 @@ void Task_Ble(void *pvParameters)
             portMAXDELAY ticks */
         else
         {               
-            DebugPrintf("Warning! : BLE - Task Timed out ", 0u);
+            Task_DebugPrintf("Warning! : BLE - Task Timed out ", 0u);
         }  
     }
 }
@@ -258,7 +259,7 @@ void static StackEventHandler(uint32_t eventType, void *eventParam)
         
         /* This event is received when the BLE stack is Started */
         case CY_BLE_EVT_STACK_ON:
-            DebugPrintf("Info     : BLE - Stack on", 0u);
+            Task_DebugPrintf("Info     : BLE - Stack on", 0u);
             
             /* Start Advertisement and enter discoverable mode */
     		bleApiResult = Cy_BLE_GAPP_StartAdvertisement(
@@ -266,23 +267,23 @@ void static StackEventHandler(uint32_t eventType, void *eventParam)
                             CY_BLE_PERIPHERAL_CONFIGURATION_0_INDEX); 
             if(bleApiResult == CY_BLE_SUCCESS )
             {
-                DebugPrintf("Success  : BLE - Advertisement API", 0u);
+                Task_DebugPrintf("Success  : BLE - Advertisement API", 0u);
             }
             else
             {
-                DebugPrintf("Failure! : BLE - Advertisement API, Error code:"
-                            , bleApiResult);
+                Task_DebugPrintf("Failure! : BLE - Advertisement API, "\
+                                 "Error code:", bleApiResult);
             }  
             break;
             
         /* This event is received when there is a timeout */
         case CY_BLE_EVT_TIMEOUT:
-            DebugPrintf("Info     : BLE - Event timeout", 0u);
+            Task_DebugPrintf("Info     : BLE - Event timeout", 0u);
             break;
         
         /* This event indicates that some internal HW error has occurred */    
 	    case CY_BLE_EVT_HARDWARE_ERROR:
-            DebugPrintf("Error!   : BLE - Internal hardware error", 0u);
+            Task_DebugPrintf("Error!   : BLE - Internal hardware error", 0u);
 		    break;
             
         /*~~~~~~~~~~~~~~~~~~~~~~~~~~ GATT EVENTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -293,13 +294,15 @@ void static StackEventHandler(uint32_t eventType, void *eventParam)
             /* Update attribute handle on GATT Connection */
             connectionHandle = *(cy_stc_ble_conn_handle_t *) eventParam;
 
-            DebugPrintf("Info     : BLE - GATT connection established", 0u);
+            Task_DebugPrintf("Info     : BLE - GATT connection established",
+                              0u);
             break;
         
         /* This event is received when device is disconnected */
         case CY_BLE_EVT_GATT_DISCONNECT_IND:
 
-            DebugPrintf("Info     : BLE - GATT disconnection occurred ", 0u);
+            Task_DebugPrintf("Info     : BLE - GATT disconnection occurred ",
+                              0u);
             break;
         
         /* This event is received when Central device sends a Write command
@@ -323,8 +326,8 @@ void static StackEventHandler(uint32_t eventType, void *eventParam)
            advertising */
         case CY_BLE_EVT_GAPP_ADVERTISEMENT_START_STOP:
             
-            DebugPrintf("Info     : BLE - Advertisement start/stop event"
-                        ,0u);
+            Task_DebugPrintf("Info     : BLE - Advertisement start/stop event",
+                              0u);
             AdvertisementEventHandler();
             break;                
         
@@ -332,7 +335,7 @@ void static StackEventHandler(uint32_t eventType, void *eventParam)
            is completed with peer Central device */
         case CY_BLE_EVT_GAP_DEVICE_CONNECTED:
                 
-            DebugPrintf("Info     : BLE - GAP device connected", 0u); 
+            Task_DebugPrintf("Info     : BLE - GAP device connected", 0u); 
             /* Toggle Orange LED periodically to indicate that BLE is in a 
                connected state */
 			status_led_data_t statusLedData = 
@@ -340,13 +343,13 @@ void static StackEventHandler(uint32_t eventType, void *eventParam)
                         			 .redLed    = LED_TURN_OFF
                         			};
 
-            rtosApiResult = xQueueSend(xQueue_StatusLedData, &statusLedData,0u);
+            rtosApiResult = xQueueSend(statusLedDataQ, &statusLedData,0u);
             
             /* Check if the operation has been successful */
             if(rtosApiResult != pdTRUE)
             {
-                DebugPrintf("Failure! : BLE - Sending data to Status LED queue"
-                            , 0u);   
+                Task_DebugPrintf("Failure! : BLE - Sending data to Status LED"\
+                                 "queue", 0u);   
             }
             break;
            
@@ -354,7 +357,7 @@ void static StackEventHandler(uint32_t eventType, void *eventParam)
            failed to establish connection */
         case CY_BLE_EVT_GAP_DEVICE_DISCONNECTED:
                 
-            DebugPrintf("Info     : BLE - GAP device disconnected", 0u);
+            Task_DebugPrintf("Info     : BLE - GAP device disconnected", 0u);
             DisconnectEventHandler();
             break;            
         
@@ -363,7 +366,7 @@ void static StackEventHandler(uint32_t eventType, void *eventParam)
          /* See the data-type cy_en_ble_event_t to understand the event 
 			occurred */
         default:
-            DebugPrintf("Info     : BLE - Event code: ", eventType);
+            Task_DebugPrintf("Info     : BLE - Event code: ", eventType);
             break;
     }
 } 
@@ -387,9 +390,9 @@ void static BleControllerInterruptEventHandler(void)
     BaseType_t xHigherPriorityTaskWoken;
     
     /* Send command to process BLE events  */
-    ble_command_t bleCommand = {.command = BLE_QUEUE_PROCESS_EVENTS};
+    ble_command_t bleCommand = {.command = PROCESS_BLE_EVENTS};
     
-    xQueueSendFromISR(xQueue_BleCommand, &bleCommand,&xHigherPriorityTaskWoken);
+    xQueueSendFromISR(bleCommandQ, &bleCommand,&xHigherPriorityTaskWoken);
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken );
 }
@@ -418,9 +421,9 @@ void isrGPIO(void)
     BaseType_t xHigherPriorityTaskWoken;
     
     /* Send command to process BLE events  */
-    ble_command_t bleCommand = {.command = BLE_QUEUE_GPIO_INTERRUPT};
+    ble_command_t bleCommand = {.command = HANDLE_GPIO_INTERRUPT};
     
-    xQueueSendFromISR(xQueue_BleCommand, &bleCommand,&xHigherPriorityTaskWoken);
+    xQueueSendFromISR(bleCommandQ, &bleCommand,&xHigherPriorityTaskWoken);
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken );
 }
@@ -475,12 +478,13 @@ void static AdvertisementEventHandler(void)
         /* Turn on the Orange LED to indicate that BLE is advertising */
         statusLedData.orangeLed = LED_TURN_ON;
         statusLedData.redLed    = LED_TURN_OFF;
-        rtosApiResult = xQueueSend(xQueue_StatusLedData, &statusLedData,0u);
+        rtosApiResult = xQueueSend(statusLedDataQ, &statusLedData,0u);
         
         /* Check if the operation has been successful */
         if(rtosApiResult != pdTRUE)
         {
-            DebugPrintf("Failure! : BLE - Sending data to Status LED queue",0u);   
+            Task_DebugPrintf("Failure! : BLE - Sending data to Status LED"\
+                             "queue",0u);   
         }
     }
     /* Check if the advertisement has timed out */
@@ -489,12 +493,13 @@ void static AdvertisementEventHandler(void)
         /* Turn off both status LEDs to indicate the idle mode */
         statusLedData.orangeLed = LED_TURN_OFF;
         statusLedData.redLed    = LED_TURN_OFF;
-        rtosApiResult = xQueueSend(xQueue_StatusLedData, &statusLedData,0u);
+        rtosApiResult = xQueueSend(statusLedDataQ, &statusLedData,0u);
         
         /* Check if the operation has been successful */
         if(rtosApiResult != pdTRUE)
         {
-            DebugPrintf("Failure! : BLE - Sending data to Status LED queue",0u);   
+            Task_DebugPrintf("Failure! : BLE - Sending data to Status LED"\
+                             "queue",0u);   
         }
     }          
 }
@@ -562,14 +567,15 @@ void static DisconnectEventHandler(void)
     Cy_BLE_GATTS_WriteAttributeValueLocal(&handleValuePair);
     
     /* Turn off the RGB LED */
-    xQueueOverwrite(xQueue_RgbLedData, &rgbData.colorAndIntensity);
+    xQueueOverwrite(rgbLedDataQ, &rgbData.colorAndIntensity);
     
     /* Turn off the Orange LED and blink the Red LED once to 
        indicate disconnection*/
-    rtosApiResult = xQueueSend(xQueue_StatusLedData, &statusLedData,0u);
+    rtosApiResult = xQueueSend(statusLedDataQ, &statusLedData,0u);
     if(rtosApiResult != pdTRUE)
     {
-        DebugPrintf("Failure! : BLE - Sending data to Status LED queue", 0u);   
+        Task_DebugPrintf("Failure! : BLE - Sending data to Status LED queue",
+                          0u);   
     }
 
     /* Check if SEND_NONE was sent previously */
@@ -577,8 +583,8 @@ void static DisconnectEventHandler(void)
     {   
         prevTouchCommand = SEND_NONE;
 
-        /* Send the command to Touch Task via xQueue_TouchCommand */
-        xQueueOverwrite(xQueue_TouchCommand, &prevTouchCommand);        
+        /* Send the command to Touch Task via touchCommandQ */
+        xQueueOverwrite(touchCommandQ, &prevTouchCommand);        
     }
 }
 
@@ -624,8 +630,8 @@ static void WriteRequestHandler (cy_stc_ble_gatts_write_cmd_req_param_t
     }
     else
     {        
-        DebugPrintf("Failure! : BLE - Sending write response. Error Code:", 
-                    bleApiResult);
+        Task_DebugPrintf("Failure! : BLE - Sending write response. Error Code:", 
+                          bleApiResult);
     }
 
     /* Check if the write request handle is matching to RGB LED Attribute  */
@@ -637,7 +643,7 @@ static void WriteRequestHandler (cy_stc_ble_gatts_write_cmd_req_param_t
                RGB_DATA_LEN);
         
         /* Update the RGB LED color and intensity */
-        xQueueOverwrite(xQueue_RgbLedData, &rgbData.colorAndIntensity);
+        xQueueOverwrite(rgbLedDataQ, &rgbData.colorAndIntensity);
     }
     
     /* Check if any of the BLE CapSense service notifications are enabled */
@@ -677,8 +683,8 @@ static void WriteRequestHandler (cy_stc_ble_gatts_write_cmd_req_param_t
     /* Check for a change in the touch command */
     if (touchCommand != prevTouchCommand)
     {   
-        /* Send the command to Touch Task via xQueue_TouchCommand */
-        xQueueOverwrite(xQueue_TouchCommand, &touchCommand);
+        /* Send the command to Touch Task via touchCommandQ */
+        xQueueOverwrite(touchCommandQ, &touchCommand);
         
         /* Store the touch command value for future comparisons */
         prevTouchCommand = touchCommand;
@@ -752,21 +758,22 @@ void static SendBleNotification (cy_ble_gatt_db_attr_handle_t charHandle,
             }
             else
             {
-                DebugPrintf("Failure! : BLE - Sending notification. "\
-                            "Error Code:", bleApiResult);
+                Task_DebugPrintf("Failure! : BLE - Sending notification. "\
+                                 "Error Code:", bleApiResult);
             }
         }
         /* Stack is busy, the current notification data will be dropped */ 
         else
         {
-            DebugPrintf("Info     : BLE - Stack busy to send notification", 0u);
+            Task_DebugPrintf("Info     : BLE - Stack busy to send notification",
+                              0u);
         }
     }
     /* The characteristics handle is invalid */
     else
     {
-        DebugPrintf("Error!   : BLE - Invalid handle to send notification. "\
-                    "Error Code:", charHandle);
+        Task_DebugPrintf("Error!   : BLE - Invalid handle to send "\
+                         "notification. Error Code:", charHandle);
     }
 }
 

@@ -60,9 +60,9 @@
 * RGB LED. The BLE central device can be CySmart mobile app or CySmart BLE 
 * Host Emulation PC tool. 
 *
-* This code examples uses FreeRTOS. For a bare-metal version of this code
-* example, see CE220167 – PSoC 6 MCU with (BLE) Connectivity: BLE with 
-* User Interface
+* This code example uses FreeRTOS. For documentation and API references of 
+* FreeRTOS, visit : https://www.freertos.org 
+*
 *******************************************************************************/
 
 /* Header file includes */
@@ -77,12 +77,14 @@
 #include "task.h"
 #include "queue.h"
 
-/* Priorities of user tasks in this project */
-#define TASK_BLE_PRIORITY           (configMAX_PRIORITIES-1)
-#define TASK_TOUCH_PRIORITY         (configMAX_PRIORITIES-2)
-#define TASK_RGB_LED_PRIORITY       (configMAX_PRIORITIES-3)
-#define TASK_STATUS_LED_PRIORITY    (configMAX_PRIORITIES-4)
-#define TASK_DISPLAY_PRIORITY       (configMAX_PRIORITIES-5)
+/* Priorities of user tasks in this project - spaced at intervals of 5 for 
+   the ease of further modification and addition of new tasks. 
+   Larger number indicates higher priority. */
+#define TASK_BLE_PRIORITY           (25u)
+#define TASK_TOUCH_PRIORITY         (20u)
+#define TASK_RGB_LED_PRIORITY       (15u)
+#define TASK_STATUS_LED_PRIORITY    (10u)
+#define TASK_DISPLAY_PRIORITY       (5u)
 
 /* Stack sizes of user tasks in this project */
 #define TASK_BLE_STACK_SIZE         (1024u)
@@ -115,13 +117,13 @@ int main()
 {   
     /* Create the queues. See the respective data-types for details of queue
        contents */
-    xQueue_BleCommand    = xQueueCreate(BLE_COMMAND_QUEUE_LEN,
+    bleCommandQ     = xQueueCreate(BLE_COMMAND_QUEUE_LEN,
                                         sizeof(ble_command_t));
-    xQueue_TouchCommand  = xQueueCreate(TOUCH_COMMAND_QUEUE_LEN,
+    touchCommandQ   = xQueueCreate(TOUCH_COMMAND_QUEUE_LEN,
                                         sizeof(touch_command_t));
-    xQueue_StatusLedData = xQueueCreate(STATUS_LED_QUEUE_LEN,
+    statusLedDataQ  = xQueueCreate(STATUS_LED_QUEUE_LEN,
                                         sizeof(status_led_data_t));
-    xQueue_RgbLedData    = xQueueCreate(RGB_LED_QUEUE_LEN,
+    rgbLedDataQ     = xQueueCreate(RGB_LED_QUEUE_LEN,
                                         sizeof(uint32_t));
          
     /* Create the user Tasks. See the respective Task definition for more
@@ -139,13 +141,13 @@ int main()
 
     /* Initialize thread-safe debug message printing. See uart_debug.h header 
        file to enable / disable this feature */
-    DebugPrintfInit();
+    Task_DebugInit();
     
     /* Start the RTOS scheduler. This function should never return */
     vTaskStartScheduler();
     
     /* Should never get here! */ 
-    UartPrintf("Error!   : RTOS - scheduler crashed \r\n");
+    DebugPrintf("Error!   : RTOS - scheduler crashed \r\n");
     
     /* Halt the CPU if scheduler exits */
     CY_ASSERT(0);
@@ -200,7 +202,7 @@ void vApplicationStackOverflowHook(TaskHandle_t *pxTask,
     
     /* Print the error message with task name if debug is enabled in 
        uart_debug.h file */
-    UartPrintf("Error!   : RTOS - stack overflow in %s \r\n", pcTaskName);
+    DebugPrintf("Error!   : RTOS - stack overflow in %s \r\n", pcTaskName);
     
     /* Halt the CPU */
     CY_ASSERT(0);
@@ -224,7 +226,7 @@ void vApplicationStackOverflowHook(TaskHandle_t *pxTask,
 void vApplicationMallocFailedHook(void)
 {
     /* Print the error message if debug is enabled in uart_debug.h file */
-    UartPrintf("Error!   : RTOS - Memory allocation failed \r\n");
+    DebugPrintf("Error!   : RTOS - Memory allocation failed \r\n");
     
     /* Halt the CPU */
     CY_ASSERT(0);

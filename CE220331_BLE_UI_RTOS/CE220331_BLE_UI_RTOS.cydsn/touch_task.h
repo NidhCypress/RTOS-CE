@@ -61,11 +61,11 @@ typedef enum
     SEND_BUTTON,
     SEND_BOTH,
     SEND_NONE,
-    PROCESS_TOUCH
+    TOUCH_TIMER_EXPIRED
 }   touch_command_t;    
 
 /* Handles for the Queues that contain touch command and data */ 
-extern QueueHandle_t xQueue_TouchCommand;
+extern QueueHandle_t touchCommandQ;
 
 /* Task_Touch scans the CapSense widgets and sends data to Task_Ble when
    required */    

@@ -70,14 +70,14 @@ int main(void)
     
     /* Initialize the hardware used to send debug messages, if debug is enabled
        in uart_debug.h header file */
-    UartPrintfIninit();
+    DebugPrintfInit();
     /* \x1b[2J\x1b[;H - ANSI ESC sequence to clear screen */
-    UartPrintf("\x1b[2J\x1b[;H");
+    DebugPrintf("\x1b[2J\x1b[;H");
 
     /* Start the controller portion of BLE. Host runs on the CM4 */
     if(Cy_BLE_Start(NULL) == CY_BLE_SUCCESS)
     {
-        UartPrintf("Success  : Cortex-M0+ - BLE controller initialization\r\n");
+        DebugPrintf("Success  : Cortex-M0+ - BLE controller initialization\r\n");
         
         /* Enable CM4 only if BLE Controller started successfully. 
            CY_CORTEX_M4_APPL_ADDR must be updated if CM4 memory layout 
@@ -86,7 +86,7 @@ int main(void)
     }
     else
     {
-        UartPrintf("Failure! : Cortex-M0+ - BLE controller initialization\r\n");
+        DebugPrintf("Failure! : Cortex-M0+ - BLE controller initialization\r\n");
         
         /* Halt the CPU */
         CY_ASSERT(0u);

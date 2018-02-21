@@ -76,7 +76,7 @@
    enabling debug reduces performance, power efficiency and increases 
    code size. Make sure to enable the UART_DEBUG component in TopDesign 
    schematic if debug is enabled */    
-#define UART_DEBUG_ENABLE    (true)
+#define UART_DEBUG_ENABLE    (false)
     
 /* Declare the macros used for UART based debug. Make sure to enable the
     UART_DEBUG component in TopDesign schematic if debug is enabled */    
@@ -88,20 +88,20 @@
        called from RTOS Tasks */
     
     /* Initializes the UART component used for STDIO functions */
-    #define UartPrintfIninit()  (DEBUG_UART_Start())
+    #define DebugPrintfInit()  (DEBUG_UART_Start())
     /* Function macro that sends formatted output to STDOUT */
-    #define UartPrintf(...)     (printf(__VA_ARGS__))
+    #define DebugPrintf(...)     (printf(__VA_ARGS__))
     
     /* RTOS thread-safe macros for initializing and printing debug 
        information from RTOS Tasks */
     
     /* Initializes the underlying Task and Queue used for printing debug 
        messages */
-    #define DebugPrintfInit()   (InitDebugPrintf())
+    #define Task_DebugInit()   (InitDebugPrintf())
 
     /* Prints a constant string and an optional error code from a separate 
        Task */
-    #define DebugPrintf(constString, errorCode) (SendToDebugPrintTask(         \
+    #define Task_DebugPrintf(constString, errorCode) (SendToDebugPrintTask(         \
                                                     (char*)constString,        \
                                                     (uint32_t)errorCode))
     
@@ -120,7 +120,7 @@
     }   debug_print_data_t;
     
     /* Queue handle for debug message Queue */
-    extern QueueHandle_t xQueue_PrintData;
+    extern QueueHandle_t debugMessageQ;
     
     /* Task that performs thread safe debug message printing */
     void Task_Debug(void *pvParameters);
@@ -128,7 +128,7 @@
     /* Inline function that creates the underlying Task and Queue  */
     void inline static InitDebugPrintf()
     {
-        xQueue_PrintData = xQueueCreate(DEBUG_QUEUE_SIZE,
+        debugMessageQ = xQueueCreate(DEBUG_QUEUE_SIZE,
                                         sizeof(debug_print_data_t));
         xTaskCreate(Task_Debug, "Debug Task", configMINIMAL_STACK_SIZE, NULL,
                     (tskIDLE_PRIORITY+1u), NULL);
@@ -139,18 +139,18 @@
     {
         debug_print_data_t printData = {.stringPointer = stringPtr, 
                                         .errorCode     = errCode};
-        xQueueSend(xQueue_PrintData, &printData,0u);
+        xQueueSend(debugMessageQ, &printData,0u);
     }
     
 /* Declaration of empty or default value macros if the debug is not enabled
    for efficient code generation. Make sure to disable the UART_DEBUG 
    component in TopDesign schematic for reducing leakage */
 #else
-    #define UART_STDIO          (NULL)  
-    #define UartPrintfIninit()         
-    #define UartPrintf(...)
-    #define DebugPrintfInit()
+    #define UART_STDIO              (NULL)  
+    #define DebugPrintfInit()         
     #define DebugPrintf(...)
+    #define Task_DebugInit()
+    #define Task_DebugPrintf(...)
     
 #endif  /* UART_DEBUG_ENABLE */ 
     

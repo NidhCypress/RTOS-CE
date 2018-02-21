@@ -55,7 +55,7 @@
 #include "queue.h"    
 
 /* Handle for the Queue that contains RGB LED data */    
-extern QueueHandle_t xQueue_RgbLedData;
+extern QueueHandle_t rgbLedDataQ;
 
 /* Task_RgbLed updates the RGB LED color and intensity */
 void Task_RgbLed(void *pvParameters);
