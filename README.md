@@ -1,2 +1,2 @@
-# RTOS-CE
-This repository contains CY8CKIT-062-BLE RTOS Code Examples for review 
+Obsolete.
+See https://github.com/cypresssemiconductorco/Code-Examples-for-ModusToolbox-Software for latest PSoC 6 code examples.
